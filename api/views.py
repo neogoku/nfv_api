@@ -28,14 +28,6 @@ def index(request):
         print "User Id " + str(row.User_Id)
         print "User Type " + str(row.User_Type)
         row = cursor.fetchone()
-    # print results[0][0]
-    # print results[0].User_Id
-
-    # data = cursor.fetchall()
-    # for row in data :
-    #     print row[0].User_Id
-    #     row = cursor.fetchone()
-
     cursor.close()
     return HttpResponse("Hi... Neo is back...")
 
@@ -63,9 +55,76 @@ def loginHandler(request, userId='Ben', pwd=''):
             #     #return HttpResponse("Hello Login API post call response...")
             #     return Response({'received data': request.data})
 
+
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def create_vnf_catalog(request, catalogName, vmImageFile, vnfdFilename, catalogDesc='', vnfdCfgFilename='',
+                       vnfdParamFilename=''):
+    print '\n' + 'Inside Create VNF Catalog...'
+    print 'catalogName:' + catalogName
+    print 'catalogDesc:' + catalogDesc
+    print 'vmImageFile:' + vmImageFile
+    print 'vnfdFilename:' + vnfdFilename
+    print 'vnfdCfgFilename:' + vnfdCfgFilename
+    print 'vnfdParamFilename:' + vnfdParamFilename
+
+    cursor = connections['nfv'].cursor()
+    status = 'P'
+    if request.method == 'GET':
+        sql = "INSERT INTO VNF_Catalog(Catalog_Name, Catalog_Desc,VM_Imagefile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename, Status) " + "VALUES ('" + catalogName + "','" + catalogDesc + "','" + vmImageFile + "','" + vnfdFilename + "','" + vnfdCfgFilename + "','" + vnfdParamFilename + "','" + status + "')"
+        print 'sql:' + sql
+        cursor.execute(sql)
+
+        # Query to fetch Catalog_Id to the user
+        retrieveSql = "SELECT Catalog_Id FROM VNF_Catalog where Catalog_Name='" + catalogName + "'";
+        cursor.execute(retrieveSql)
+
+        results = namedtuplefetchall(cursor)
+
+        for row in results:
+            catalogId = str(row.Catalog_Id)
+            print "Catalog Id: " + catalogId
+            return JsonResponse({'CatalogId': catalogId})
+
+
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def list_vnf_catalog(request):
+    print 'Inside VNF Catalog...'
+
+    cursor = connections['nfv'].cursor()
+    if request.method == 'GET':
+        sql = "SELECT Catalog_Id, Catalog_Name, Catalog_Desc, VM_ImageFile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename FROM VNF_Catalog where Status='P'"
+        cursor.execute(sql)
+
+        results = namedtuplefetchall(cursor)
+
+        json_res = []
+
+        for row in results:
+            catalog_id = str(row.Catalog_Id)
+            catalog_name = str(row.Catalog_Name)
+            catalog_Desc = str(row.Catalog_Desc)
+            vm_image_file = str(row.VM_ImageFile)
+            vnfd_filename = str(row.VNFD_Filename)
+            vnf_cfg_filename = str(row.VNF_Config_Filename)
+            vnf_param_filename = str(row.VNF_Param_Filename)
+            print 'CatalogId:' + catalog_id
+            print 'CatalogName:' + catalog_name
+            print 'CatalogDesc:' + catalog_Desc
+            print 'VM_ImageFile:' + vm_image_file
+            print 'VNFD FileName:' + vnfd_filename
+            print 'VNF_Config_FileName:' + vnf_cfg_filename
+            print 'VNF_Param_Filename:' + vnf_param_filename
+            obj = {catalog_id: {'CatalogId': catalog_id, 'CatalogName': catalog_name, 'CatalogDesc': catalog_Desc,
+                                'VM_ImageFile': vm_image_file, 'VNFD_Filename': vnfd_filename,
+                                'VNF_Config_Filename': vnf_cfg_filename, 'VNF_Param_Filename': vnf_param_filename}}
+            json_res.append(obj)
+            print json_res
+
+    return JsonResponse(json_res, safe=False)
+
+# request,catalogName,vmImageFile,vnfdFilename,catalogDesc='',vnfdCfgFilename='',vnfdParamFilename=''
 #
-# class loginHandler (views.APIView) :
-#     def get(self, request, *args, **kwargs):
-#         username = kwargs['username']
-#         print 'Logged In User:'+username
-#         return HttpResponse(username)
+#        for row in results:
+#

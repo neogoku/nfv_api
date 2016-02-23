@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/nfv_api.iml" filepath="$PROJECT_DIR$/.idea/nfv_api.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../openstack.nfv/.idea/openstack.nfv.iml" filepath="$PROJECT_DIR$/../openstack.nfv/.idea/openstack.nfv.iml" />
     </modules>
   </component>
 </project>

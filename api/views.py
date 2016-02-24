@@ -9,6 +9,7 @@ import json
 from rest_framework.response import Response
 from rest_framework import status
 from toscaparser.tosca_template import ToscaTemplate
+from heat_translator_master.translator.shell import TranslatorShell
 import random
 from django.views.decorators.csrf import csrf_exempt
 def namedtuplefetchall(cursor):
@@ -98,11 +99,17 @@ def deleteCatalog(request, catalogId=''):
     cursor.execute(sql)
     return JsonResponse({'status': 'deleted', 'catalogId': catalogId})
 
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def callMe(request):
+    print TranslatorShell._translate('tosca', 'C:\\tosca_helloworld', {}, True)
+
 @csrf_exempt
 def toscaValidate(request):
     path = handle_uploaded_file(request.FILES['path'])
     print 'here'
     #path = request.GET.get('path', '')
+
     obj = ToscaTemplate(path, None, True)
     print obj.msg
     if obj.msg == 'success':

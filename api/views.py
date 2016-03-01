@@ -11,6 +11,7 @@ from rest_framework import status
 from toscaparser.tosca_template import ToscaTemplate
 from heat_translator_master.translator.shell import TranslatorShell
 import random
+import os
 from django.views.decorators.csrf import csrf_exempt
 def namedtuplefetchall(cursor):
     "Return all rows from a cursor as a namedtuple"
@@ -61,7 +62,7 @@ def loginHandler(request, userId='Ben', pwd=''):
             userRole = str(row.User_Type)
             print "User Type " + userRole
             return JsonResponse({'UserRole': userRole, 'UserId': userId})
-        return JsonResponse({'UserRole': '', 'UserId': userId})
+    return JsonResponse({'UserRole': 'Invalid', 'UserId': userId})
             # elif request.method == 'POST':
             #     #return HttpResponse("Hello Login API post call response...")
             #     return Response({'received data': request.data})
@@ -99,19 +100,18 @@ def deleteCatalog(request, catalogId=''):
     cursor.execute(sql)
     return JsonResponse({'status': 'deleted', 'catalogId': catalogId})
 
-@api_view(['GET', 'POST'])
-@parser_classes((JSONParser,))
+@csrf_exempt
 def translate(request):
     path = handle_uploaded_file(request.FILES['path'])
     #path = 'c:\\tosca_helloworld.yaml'
     obj = TranslatorShell()
     content = obj._translate('tosca', path, {}, True)
-    with open('c:\\somefile.yaml', 'a') as the_file:
+    os.remove(path)
+    print path
+    with open(path, 'a') as the_file:
         for line in content.splitlines():
             the_file.write(line+'\n')
-
-
-    return JsonResponse({'status': 'success', 'content': content})
+    return JsonResponse({'status': 'success', 'content': content, 'path': path})
 
 @csrf_exempt
 def toscaValidate(request):
@@ -131,7 +131,7 @@ def handle_uploaded_file(f):
     print f.name
     extension = f.name.split('.')[-1]
     filename = f.name +`random.random()` + '.' + extension
-    path = 'C:\\'+ filename
+    path = 'C:\\folder\\'+ filename
     with open(path, 'wb+') as destination:
         for chunk in f.chunks():
             destination.write(chunk)

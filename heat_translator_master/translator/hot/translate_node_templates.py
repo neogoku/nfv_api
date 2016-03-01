@@ -70,10 +70,9 @@ def _load_classes(locations, classes):
     for cls_path in locations:
         # Use the absolute path of the class path
         abs_path = os.path.dirname(os.path.abspath(__file__))
-        print abs_path
-        print cls_path
-        abs_path = abs_path.replace('translator/hot', cls_path)
-        print abs_path
+
+        abs_path = abs_path.replace('translator\\hot', cls_path)
+
         # Grab all the tosca type module files in the given path
         mod_files = [f for f in os.listdir(abs_path) if f.endswith('.py')
                      and not f.startswith('__init__')
@@ -81,18 +80,18 @@ def _load_classes(locations, classes):
 
         # For each module, pick out the target translation class
         for f in mod_files:
-            continue
             # NOTE: For some reason the existing code does not use the map to
             # instantiate ToscaBlockStorageAttachment. Don't add it to the map
             # here until the dependent code is fixed to use the map.
             if f == 'tosca_block_storage_attachment.py':
                 continue
-            print '*****************************************'
-            print f
+
+
             mod_name = cls_path + '/' + f.strip('.py')
             mod_name = mod_name.replace('/', '.')
             mod_name = 'heat_translator_master.' + mod_name
-            print mod_name
+
+            #mod_name = 'heat_translator_master.translator.hot.tosca_translator'
             try:
                 mod = importlib.import_module(mod_name)
                 target_name = getattr(mod, 'TARGET_CLASS_NAME')
@@ -167,12 +166,13 @@ class TranslateNodeTemplates(object):
         resource.handle_properties()
 
     def _translate_nodetemplates(self):
-
+        TOSCA_TO_HOT_TYPE = _generate_type_map()
         log.debug(_('Translating the node templates.'))
         suffix = 0
         # Copy the TOSCA graph: nodetemplate
         for node in self.nodetemplates:
             base_type = HotResource.get_base_type(node.type_definition)
+
             hot_node = TOSCA_TO_HOT_TYPE[base_type.type](node)
             self.hot_resources.append(hot_node)
             self.hot_lookup[node] = hot_node

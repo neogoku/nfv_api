@@ -101,17 +101,22 @@ def deleteCatalog(request, catalogId=''):
 
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
-def callMe(request):
-    print TranslatorShell._translate('tosca', 'C:\\tosca_helloworld', {}, True)
+def translate(request):
+    path = handle_uploaded_file(request.FILES['path'])
+    #path = 'c:\\tosca_helloworld.yaml'
+    obj = TranslatorShell()
+    content = obj._translate('tosca', path, {}, True)
+    with open('c:\\somefile.yaml', 'a') as the_file:
+        for line in content.splitlines():
+            the_file.write(line+'\n')
+
+
+    return JsonResponse({'status': 'success', 'content': content})
 
 @csrf_exempt
 def toscaValidate(request):
     path = handle_uploaded_file(request.FILES['path'])
-    print 'here'
-    #path = request.GET.get('path', '')
-
     obj = ToscaTemplate(path, None, True)
-    print obj.msg
     if obj.msg == 'success':
         return JsonResponse({'status': 'success', 'message': 'TOSCA Validation Successful', 'path' : path})
     else:

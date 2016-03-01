@@ -17,7 +17,7 @@ import os
 import requests
 
 from toscaparser.utils.gettextutils import _
-import heat_translator_master.translator.common.utils
+from heat_translator_master.translator.common import utils
 from heat_translator_master.translator.hot.syntax.hot_resource import HotResource
 
 log = logging.getLogger('heat-translator')
@@ -81,6 +81,11 @@ IMAGES = {'ubuntu-software-config-os-init': {'architecture': 'x86_64',
 class ToscaCompute(HotResource):
     '''Translate TOSCA node type tosca.nodes.Compute.'''
 
+    COMPUTE_HOST_PROP = (DISK_SIZE, MEM_SIZE, NUM_CPUS) = \
+                        ('disk_size', 'mem_size', 'num_cpus')
+
+    COMPUTE_OS_PROP = (ARCHITECTURE, DISTRIBUTION, TYPE, VERSION) = \
+                      ('architecture', 'distribution', 'type', 'version')
     toscatype = 'tosca.nodes.Compute'
 
     def __init__(self, nodetemplate):
@@ -95,9 +100,10 @@ class ToscaCompute(HotResource):
             self.nodetemplate.get_capability('host'),
             self.nodetemplate.get_capability('os'))
         self.properties['user_data_format'] = 'SOFTWARE_CONFIG'
-        # TODO(anyone): handle user key
-        # hardcoded here for testing
-        self.properties['key_name'] = 'userkey'
+        tosca_props = self._get_tosca_props(
+            self.nodetemplate.get_properties_objects())
+        for key, value in tosca_props.items():
+            self.properties[key] = value
 
     # To be reorganized later based on new development in Glance and Graffiti
     def translate_compute_flavor_and_image(self,
@@ -112,14 +118,10 @@ class ToscaCompute(HotResource):
             for prop in host_capability.get_properties_objects():
                 host_cap_props[prop.name] = prop.value
             flavor = self._best_flavor(host_cap_props)
-        else:
-            flavor = self.nodetemplate.get_property_value("flavor") or None
         if os_capability:
             for prop in os_capability.get_properties_objects():
                 os_cap_props[prop.name] = prop.value
             image = self._best_image(os_cap_props)
-        else:
-            image = self.nodetemplate.get_property_value("image") or None
         hot_properties['flavor'] = flavor
         hot_properties['image'] = image
         return hot_properties
@@ -196,23 +198,29 @@ class ToscaCompute(HotResource):
         # TODO(anyone): Handle the case where the value contains something like
         # get_input instead of a value.
         # flavors that fit the CPU count
-        cpu = properties.get('num_cpus')
-        match_cpu = self._match_flavors(match_all, flavors, 'num_cpus', cpu)
+        cpu = properties.get(self.NUM_CPUS)
+        if cpu is None:
+            self._log_compute_msg(self.NUM_CPUS, 'flavor')
+        match_cpu = self._match_flavors(match_all, flavors, self.NUM_CPUS, cpu)
 
         # flavors that fit the mem size
-        mem = properties.get('mem_size')
+        mem = properties.get(self.MEM_SIZE)
         if mem:
-            mem = translator.common.utils.MemoryUnit.convert_unit_size_to_num(
+            mem = utils.MemoryUnit.convert_unit_size_to_num(
                 mem, 'MB')
+        else:
+            self._log_compute_msg(self.MEM_SIZE, 'flavor')
         match_cpu_mem = self._match_flavors(match_cpu, flavors,
-                                            'mem_size', mem)
+                                            self.MEM_SIZE, mem)
         # flavors that fit the disk size
-        disk = properties.get('disk_size')
+        disk = properties.get(self.DISK_SIZE)
         if disk:
-            disk = translator.common.utils.MemoryUnit.\
+            disk = utils.MemoryUnit.\
                 convert_unit_size_to_num(disk, 'GB')
+        else:
+            self._log_compute_msg(self.DISK_SIZE, 'flavor')
         match_cpu_mem_disk = self._match_flavors(match_cpu_mem, flavors,
-                                                 'disk_size', disk)
+                                                 self.DISK_SIZE, disk)
         # if multiple match, pick the flavor with the least memory
         # the selection can be based on other heuristic, e.g. pick one with the
         # least total resource
@@ -225,18 +233,26 @@ class ToscaCompute(HotResource):
 
     def _best_image(self, properties):
         match_all = IMAGES.keys()
-        architecture = properties.get('architecture')
+        architecture = properties.get(self.ARCHITECTURE)
+        if architecture is None:
+            self._log_compute_msg(self.ARCHITECTURE, 'image')
         match_arch = self._match_images(match_all, IMAGES,
-                                        'architecture', architecture)
-        type = properties.get('type')
-        match_type = self._match_images(match_arch, IMAGES, 'type', type)
-        distribution = properties.get('distribution')
+                                        self.ARCHITECTURE, architecture)
+        type = properties.get(self.TYPE)
+        if type is None:
+            self._log_compute_msg(self.TYPE, 'image')
+        match_type = self._match_images(match_arch, IMAGES, self.TYPE, type)
+        distribution = properties.get(self.DISTRIBUTION)
+        if distribution is None:
+            self._log_compute_msg(self.DISTRIBUTION, 'image')
         match_distribution = self._match_images(match_type, IMAGES,
-                                                'distribution',
+                                                self.DISTRIBUTION,
                                                 distribution)
-        version = properties.get('version')
+        version = properties.get(self.VERSION)
+        if version is None:
+            self._log_compute_msg(self.VERSION, 'image')
         match_version = self._match_images(match_distribution, IMAGES,
-                                           'version', version)
+                                           self.VERSION, version)
 
         if len(match_version):
             return list(match_version)[0]
@@ -286,3 +302,9 @@ class ToscaCompute(HotResource):
                 attr['get_attr'] = [self.name, 'networks', 'private', 0]
 
         return attr
+
+    def _log_compute_msg(self, prop, what):
+        msg = _('No value is provided for Compute capability '
+                'property "%(prop)s". This may set an undesired "%(what)s" '
+                'in the template.') % {'prop': prop, 'what': what}
+        log.warn(msg)

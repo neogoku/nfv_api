@@ -19,7 +19,7 @@ import sys
 from toscaparser.tosca_template import ToscaTemplate
 from toscaparser.utils.gettextutils import _
 from toscaparser.utils.urlutils import UrlUtils
-from hot.tosca_translator import TOSCATranslator
+from heat_translator_master.translator.hot.tosca_translator import TOSCATranslator
 
 """
 Test the heat-translator translation from command line as:
@@ -31,11 +31,9 @@ Takes three user arguments,
 1. type of translation (e.g. tosca) (required)
 2. Path to the file that needs to be translated (required)
 3. Input parameters (optional)
-
 In order to use heat-translator to only validate template,
 without actual translation, pass --validate-only=true along with
 other required arguments.
-
 """
 
 #logging.config.fileConfig('heat_translator_logging.conf')
@@ -108,7 +106,7 @@ class TranslatorShell(object):
                 ToscaTemplate(path, parsed_params, a_file)
             else:
                 #log.info(
-                 #   _('Checked whether template path is a file or url path.'))
+                #    _('Checked whether template path is a file or url path.'))
                 heat_tpl = self._translate(template_type, path, parsed_params,
                                            a_file)
                 if heat_tpl:
@@ -150,6 +148,7 @@ class TranslatorShell(object):
         return parsed_inputs
 
     def _translate(self, sourcetype, path, parsed_params, a_file):
+        self.deploy = False
         output = None
         if sourcetype == "tosca":
             #log.debug(_('Loading the tosca template.'))

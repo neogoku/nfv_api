@@ -100,6 +100,48 @@ def deleteCatalog(request, catalogId=''):
     cursor.execute(sql)
     return JsonResponse({'status': 'deleted', 'catalogId': catalogId})
 
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def deleteCatalogFiles(request):
+    vnfDef = request.GET.get('vnfDefinition')
+    vnfConfig = request.GET.get('Config')
+    vnfParam = request.GET.get('ParameterValuePoint')
+    catalogId = request.GET.get('catalogId')
+    print vnfDef
+    print vnfConfig
+    print vnfParam
+    cursor = connections['nfv'].cursor()
+    sql = "SELECT * FROM vnf_catalog where catalog_Id=" + str(catalogId)
+    cursor.execute(sql)
+    results = namedtuplefetchall(cursor)
+
+    for row in results:
+        vnfDefPath = str(row.VNFD_Path)
+        vnfConfigPath = str(row.VNF_Config_Path)
+        vnfParamPath = str(row.VNF_Param_Path)
+        vnfDefName = str(row.VNFD_Filename)
+        vnfConfigName = str(row.VNF_Config_Filename)
+        vnfParamName = str(row.VNF_Param_Filename)
+
+    if vnfDef == 'true':
+        if os.path.isfile(vnfDefPath):
+            os.remove(vnfDefPath)
+        sql='Update vnf_catalog set VNFD_Filename="None", VNFD_Path="None" where Catalog_Id=' + str(catalogId)
+        cursor.execute(sql)
+    if vnfConfig == 'true':
+        if os.path.isfile(vnfConfigPath):
+            os.remove(vnfConfigPath)
+        sql='Update vnf_catalog set VNF_Config_Filename="None", VNF_Config_Path="None" where Catalog_Id=' + str(catalogId)
+        cursor.execute(sql)
+    if vnfParam == 'true':
+        if os.path.isfile(vnfParamPath):
+            os.remove(vnfParamPath)
+        sql='Update vnf_catalog set VNFD_Param_Filename="None", VNF_Param_Path="None" where Catalog_Id=' + str(catalogId)
+        cursor.execute(sql)
+
+
+    return JsonResponse({'status': 'success', 'catalogId': catalogId})
+
 @csrf_exempt
 def translate(request):
     path = handle_uploaded_file(request.FILES['path'])

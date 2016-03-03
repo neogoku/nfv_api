@@ -95,7 +95,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'NFV_Dev',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': 'password-1',
         'HOST': 'localhost',
         'PORT': '3306',
     },
@@ -105,7 +105,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'NFV_Dev',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': 'password-1',
         'HOST': 'localhost',
         'PORT': '3306',
     }

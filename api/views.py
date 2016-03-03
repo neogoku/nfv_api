@@ -209,3 +209,60 @@ def list_vnf_catalog(request):
 
     print 'JsonResponse:'+str(json_res)
     return JsonResponse(json_res, safe=False)
+
+
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def get_file_content(request, fileType, catalogId):
+    print 'Inside get file name API...'
+    cursor = connections['nfv'].cursor()
+    if request.method == 'GET':
+        if fileType == "vnfd":
+            sql = "SELECT VNFD_Path FROM vnf_catalog where Catalog_Id=" + catalogId
+            print'sql:' + sql
+            cursor.execute(sql)
+            results = namedtuplefetchall(cursor)
+            for row in results:
+                vnfd_filename = str(row.VNFD_Path)
+                print 'VNFD Path:' + vnfd_filename
+                with open(vnfd_filename, 'r') as content_file:
+                    content = content_file.read()
+                print 'content:' + content
+                return JsonResponse({'status': 'success', 'content': content}, safe=False)
+        elif fileType == "vnf_cfg_filename":
+            sql = "SELECT VNF_Config_Path FROM vnf_catalog where Catalog_Id=" + catalogId
+            print'sql:' + sql
+            cursor.execute(sql)
+            results = namedtuplefetchall(cursor)
+            for row in results:
+                vnf_cfg_filename = str(row.VNF_Config_Path)
+                print 'VNFD Config Path:' + vnf_cfg_filename
+                with open(vnf_cfg_filename, 'r') as content_file:
+                    content = content_file.read()
+                print 'content:' + content
+                return JsonResponse({'status': 'success', 'content': content}, safe=False)
+        elif fileType == "vnf_param":
+            sql = "SELECT VNF_Param_Path FROM vnf_catalog where Catalog_Id=" + catalogId
+            cursor.execute(sql)
+            results = namedtuplefetchall(cursor)
+            for row in results:
+                vnf_param_path = str(row.VNF_Param_Path)
+                print 'VNFD Param Path:' + vnf_param_path
+                with open(vnf_param_path, 'r') as content_file:
+                    content = content_file.read()
+                print 'content:' + content
+                return JsonResponse({'status': 'success', 'content': content}, safe=False)
+
+
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def upload_vnf_file(request, catalogId, vnfdFilename='', vnfdFilePath='', vnfdCfgFilename='', vnfdCfgFilePath='',
+                    vnfdParamFilename='', vnfdParamPath=''):
+    print 'Inside upload_vnf_file...'
+    cursor = connections['nfv'].cursor()
+    if request.method == 'GET':
+        sql = "update vnf_catalog set VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "',VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "',VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "' where Catalog_Id='" + catalogId + "'"
+        print 'sql:' + sql
+        cursor.execute(sql)
+        print 'uploaded successfully...'
+    return JsonResponse({'CatalogId': catalogId, 'status': 'success'})

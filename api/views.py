@@ -12,7 +12,12 @@ from toscaparser.tosca_template import ToscaTemplate
 from heat_translator_master.translator.shell import TranslatorShell
 import random
 import os
+import zipfile
+import StringIO
+from wsgiref.util import FileWrapper
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.encoding import smart_str
+
 def namedtuplefetchall(cursor):
     "Return all rows from a cursor as a namedtuple"
     desc = cursor.description
@@ -308,3 +313,46 @@ def upload_vnf_file(request, catalogId, vnfdFilename='', vnfdFilePath='', vnfdCf
         cursor.execute(sql)
         print 'uploaded successfully...'
     return JsonResponse({'CatalogId': catalogId, 'status': 'success'})
+
+
+@api_view(['GET', 'POST'])
+def download_file(request):
+    print "here is it"
+    vnfDef = request.GET.get('vnfDefinition')
+    vnfConfig = request.GET.get('Config')
+    vnfParam = request.GET.get('ParameterValuePoint')
+    catalogId = request.GET.get('catalogId')
+
+    s = StringIO.StringIO()
+    zf = zipfile.ZipFile(s, "w")
+
+    cursor = connections['nfv'].cursor()
+    sql = "SELECT * FROM vnf_catalog where catalog_Id=" + str(catalogId)
+    cursor.execute(sql)
+    results = namedtuplefetchall(cursor)
+
+    for row in results:
+        vnfDefPath = str(row.VNFD_Path)
+        vnfConfigPath = str(row.VNF_Config_Path)
+        vnfParamPath = str(row.VNF_Param_Path)
+        vnfDefName = str(row.VNFD_Filename)
+        vnfConfigName = str(row.VNF_Config_Filename)
+        vnfParamName = str(row.VNF_Param_Filename)
+
+    if vnfDef == 'true':
+        if os.path.isfile(vnfDefPath):
+            zf.write(vnfDefPath)
+    if vnfConfig == 'true':
+        if os.path.isfile(vnfConfigPath):
+            zf.write(vnfConfigPath)
+    if vnfParam == 'true':
+        if os.path.isfile(vnfParamPath):
+            zf.write(vnfParamPath)
+
+    zf.close()
+
+
+    response = HttpResponse(s.getvalue(),content_type='application/zip')
+    response['Content-Disposition'] = 'attachment; filename=%s' % smart_str("files.zip")
+
+    return response

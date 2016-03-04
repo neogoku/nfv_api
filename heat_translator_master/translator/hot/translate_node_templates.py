@@ -71,7 +71,7 @@ def _load_classes(locations, classes):
         # Use the absolute path of the class path
         abs_path = os.path.dirname(os.path.abspath(__file__))
 
-        abs_path = abs_path.replace('translator/hot', cls_path)
+        abs_path = abs_path.replace('translator\\hot', cls_path)
 
         # Grab all the tosca type module files in the given path
         mod_files = [f for f in os.listdir(abs_path) if f.endswith('.py')

@@ -59,14 +59,15 @@ def loginHandler(request, userId='Ben', pwd=''):
     print 'pwd:' + pwd
     cursor = connections['nfv'].cursor()
     if request.method == 'GET':
-        sql = "SELECT User_Type FROM VNF_User where User_Id='" + userId + "' and Password='" + pwd + "'"
+        sql = "SELECT User_Type,First_Name,Last_Name FROM vnf_user where User_Id='" + userId + "' and Password='" + pwd + "'"
         print 'sql:' + sql
         cursor.execute(sql)
         results = namedtuplefetchall(cursor)
         for row in results:
             userRole = str(row.User_Type)
+            userName = str(row.First_Name + ' ' + row.Last_Name)
             print "User Type " + userRole
-            return JsonResponse({'UserRole': userRole, 'UserId': userId})
+            return JsonResponse({'UserRole': userRole, 'UserId': userId, 'UserName': userName})
     return JsonResponse({'UserRole': 'Invalid', 'UserId': userId})
             # elif request.method == 'POST':
             #     #return HttpResponse("Hello Login API post call response...")
@@ -178,7 +179,7 @@ def handle_uploaded_file(f):
     print f.name
     extension = f.name.split('.')[-1]
     filename = f.name +`random.random()` + '.' + extension
-    path = 'C:\\folder\\'+ filename
+    path = '/home/rdk/' + filename
     with open(path, 'wb+') as destination:
         for chunk in f.chunks():
             destination.write(chunk)
@@ -255,6 +256,42 @@ def list_vnf_catalog(request):
             #dataobj_res.append(dataobj)
 
     print 'JsonResponse:'+str(json_res)
+    return JsonResponse(json_res, safe=False)
+
+
+@api_view(['GET', 'POST'])
+@parser_classes((JSONParser,))
+def list_enterprise_catalog(request):
+    print 'Inside VNF Catalog...'
+
+    cursor = connections['nfv'].cursor()
+    if request.method == 'GET':
+        sql = "SELECT Catalog_Id, Catalog_Name, Catalog_Desc, VM_ImageFile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename FROM VNF_Catalog where Status='A'"
+        cursor.execute(sql)
+
+        results = namedtuplefetchall(cursor)
+
+        json_res = []
+
+        for row in results:
+            catalog_id = str(row.Catalog_Id)
+            catalog_name = str(row.Catalog_Name)
+            catalog_Desc = str(row.Catalog_Desc)
+            vm_image_file = str(row.VM_ImageFile)
+            vnfd_filename = str(row.VNFD_Filename)
+            vnf_cfg_filename = str(row.VNF_Config_Filename)
+            vnf_param_filename = str(row.VNF_Param_Filename)
+
+            jsonobj = {'CatalogId': catalog_id, 'CatalogName': catalog_name, 'CatalogDesc': catalog_Desc,
+                       'VM_ImageFile': vm_image_file, 'VNFD_Filename': vnfd_filename,
+                       'VNF_Config_Filename': vnf_cfg_filename, 'VNF_Param_Filename': vnf_param_filename}
+
+            # dataobj=[catalog_name,catalog_Desc,vm_image_file,vnfd_filename,vnf_cfg_filename,vnf_param_filename,catalog_id]
+
+            json_res.append(jsonobj)
+            # dataobj_res.append(dataobj)
+
+    print 'JsonResponse:' + str(json_res)
     return JsonResponse(json_res, safe=False)
 
 

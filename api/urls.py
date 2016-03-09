@@ -19,6 +19,8 @@ urlpatterns = [
         views.upload_vnf_file),
     url(r'^deleteCatalogFiles', views.deleteCatalogFiles),
     url(r'^downloadFile', views.download_file),
+    url(r'^listEnterpriseCatalog', views.list_enterprise_catalog),
+
     # upload_vnf_file(request,catalogId,vnfdFilename='', vnfdFilePath='',vnfdCfgFilename='',vnfdCfgFilePath='',vnfdParamFilename='', vnfdParamPath=''):
     # url(r'^$',views.login,name='login'),
     # url(r'^login/', views.loginHandler),

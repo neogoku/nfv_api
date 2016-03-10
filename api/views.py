@@ -27,7 +27,7 @@ def namedtuplefetchall(cursor):
 
 def index(request):
     cursor = connections['nfv'].cursor()
-    sql = "SELECT User_Id, User_Type,First_Name FROM VNF_User"
+    sql = "SELECT User_Id, User_Type,First_Name FROM vnf_user"
     print 'sql:' + sql
     cursor.execute(sql)
     results = namedtuplefetchall(cursor)
@@ -179,7 +179,7 @@ def handle_uploaded_file(f):
     print f.name
     extension = f.name.split('.')[-1]
     filename = f.name +`random.random()` + '.' + extension
-    path = '/home/rdk/' + filename
+    path = '/home/rdk/files/' + filename
     with open(path, 'wb+') as destination:
         for chunk in f.chunks():
             destination.write(chunk)
@@ -194,33 +194,37 @@ def updateCatalog(catalogId, status):
 
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
-def create_vnf_catalog(request, catalogName, vmImageFile, vnfdFilename, catalogDesc='', vnfdCfgFilename='',
-                       vnfdParamFilename='', vnfdFilePath='',vnfdCfgFilePath='', vnfdParamPath='', vmImagePath=''):
+def create_vnf_catalog(request, ):
     print '\n' + 'Inside Create VNF Catalog...'
-    print 'catalogName:' + catalogName
-    print 'catalogDesc:' + catalogDesc
-    print 'vmImageFile:' + vmImageFile
-    print 'vnfdFilename:' + vnfdFilename
-    print 'vnfdCfgFilename:' + vnfdCfgFilename
-    print 'vnfdParamFilename:' + vnfdParamFilename
+    received_json_data = json.loads(request.body)
+    catalogName = received_json_data['vnfName']
+    catalogDesc = received_json_data['vnfDesc']
+    vmImageFile = received_json_data['imgLoc']
+    vnfdFilename = received_json_data['vnfDefinitionName']
+    vnfdCfgFilename = received_json_data['configName']
+    vnfdParamFilename = received_json_data['parameterValuePointName']
+    vnfdFilePath = received_json_data['vnfDefinitionPath']
+    vnfdCfgFilePath = received_json_data['configPath']
+    vnfdParamPath = received_json_data['parameterValuePointPath']
+    vmImagePath = received_json_data['imagePath']
 
     cursor = connections['nfv'].cursor()
     status = 'P'
-    if request.method == 'GET':
-        sql = "INSERT INTO VNF_Catalog(Catalog_Name, Catalog_Desc,VM_Imagefile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename, Status, VNFD_Path, VNF_Config_Path, VNF_Param_Path, VM_Image_Path) " + "VALUES ('" + catalogName + "','" + catalogDesc + "','" + vmImageFile + "','" + vnfdFilename + "','" + vnfdCfgFilename + "','" + vnfdParamFilename + "','" + status + "' ,'" + vnfdFilePath + "','" + vnfdCfgFilePath + "','" + vnfdParamPath + "','" + vmImagePath + "')"
-        print 'sql:' + sql
-        cursor.execute(sql)
+    sql = "INSERT INTO vnf_catalog(Catalog_Name, Catalog_Desc,VM_Imagefile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename, Status, VNFD_Path, VNF_Config_Path, VNF_Param_Path, VM_Image_Path) " + "VALUES ('" + catalogName + "','" + catalogDesc + "','" + vmImageFile + "','" + vnfdFilename + "','" + vnfdCfgFilename + "','" + vnfdParamFilename + "','" + status + "' ,'" + vnfdFilePath + "','" + vnfdCfgFilePath + "','" + vnfdParamPath + "','" + vmImagePath + "')"
+    print 'sql:' + sql
+    cursor.execute(sql)
 
-        # Query to fetch Catalog_Id to the user
-        retrieveSql = "SELECT Catalog_Id FROM VNF_Catalog where Catalog_Name='" + catalogName + "'";
-        cursor.execute(retrieveSql)
+    # Query to fetch Catalog_Id to the user
+    retrieveSql = "SELECT Catalog_Id FROM vnf_catalog where Catalog_Name='" + catalogName + "'";
+    print retrieveSql
+    cursor.execute(retrieveSql)
 
-        results = namedtuplefetchall(cursor)
+    results = namedtuplefetchall(cursor)
 
-        for row in results:
-            catalogId = str(row.Catalog_Id)
-            print "Catalog Id: " + catalogId
-            return JsonResponse({'CatalogId': catalogId})
+    for row in results:
+        catalogId = str(row.Catalog_Id)
+        print "Catalog Id: " + catalogId
+        return JsonResponse({'CatalogId': catalogId})
 
 
 @api_view(['GET', 'POST'])
@@ -230,7 +234,7 @@ def list_vnf_catalog(request):
 
     cursor = connections['nfv'].cursor()
     if request.method == 'GET':
-        sql = "SELECT Catalog_Id, Catalog_Name, Catalog_Desc, VM_ImageFile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename FROM VNF_Catalog where Status='P'"
+        sql = "SELECT Catalog_Id, Catalog_Name, Catalog_Desc, VM_ImageFile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename FROM vnf_catalog where Status='P'"
         cursor.execute(sql)
 
         results = namedtuplefetchall(cursor)
@@ -266,7 +270,7 @@ def list_enterprise_catalog(request):
 
     cursor = connections['nfv'].cursor()
     if request.method == 'GET':
-        sql = "SELECT Catalog_Id, Catalog_Name, Catalog_Desc, VM_ImageFile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename FROM VNF_Catalog where Status='A'"
+        sql = "SELECT Catalog_Id, Catalog_Name, Catalog_Desc, VM_ImageFile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename FROM vnf_catalog where Status='A'"
         cursor.execute(sql)
 
         results = namedtuplefetchall(cursor)
@@ -340,15 +344,23 @@ def get_file_content(request, fileType, catalogId):
 
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
-def upload_vnf_file(request, catalogId, vnfdFilename='', vnfdFilePath='', vnfdCfgFilename='', vnfdCfgFilePath='',
-                    vnfdParamFilename='', vnfdParamPath=''):
+def upload_vnf_file(request):
+    received_json_data = json.loads(request.body)
+
+    catalogId = received_json_data['vnfId']
+    vnfdFilename = received_json_data['vnfDefinitionName']
+    vnfdCfgFilename = received_json_data['configName']
+    vnfdParamFilename = received_json_data['parameterValuePointName']
+    vnfdFilePath = received_json_data['vnfDefinitionPath']
+    vnfdCfgFilePath = received_json_data['configPath']
+    vnfdParamPath = received_json_data['parameterValuePointPath']
+
     print 'Inside upload_vnf_file...'
     cursor = connections['nfv'].cursor()
-    if request.method == 'GET':
-        sql = "update vnf_catalog set VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "',VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "',VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "' where Catalog_Id='" + catalogId + "'"
-        print 'sql:' + sql
-        cursor.execute(sql)
-        print 'uploaded successfully...'
+    sql = "update vnf_catalog set VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "',VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "',VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "' where Catalog_Id='" + catalogId + "'"
+    print 'sql:' + sql
+    cursor.execute(sql)
+    print 'uploaded successfully...'
     return JsonResponse({'CatalogId': catalogId, 'status': 'success'})
 
 

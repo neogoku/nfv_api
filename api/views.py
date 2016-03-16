@@ -356,8 +356,27 @@ def upload_vnf_file(request):
     vnfdParamPath = received_json_data['parameterValuePointPath']
 
     print 'Inside upload_vnf_file...'
+    sql = "update vnf_catalog set "
+
     cursor = connections['nfv'].cursor()
-    sql = "update vnf_catalog set VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "',VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "',VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "' where Catalog_Id='" + catalogId + "'"
+
+    if vnfdFilename != 'None' and vnfdCfgFilename != 'None' and vnfdParamFilename != 'None':
+        print '***********************************************************************************  '
+        sql += "VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "',VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "', VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "'"
+    elif vnfdFilename != 'None' and vnfdCfgFilename != 'None':
+        sql += "VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "',VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "'"
+    elif vnfdFilename != 'None' and vnfdParamFilename != 'None':
+        sql += "VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "', VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "'"
+    elif vnfdCfgFilename != 'None' and vnfdParamFilename != 'None':
+        sql += "VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "', VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "'"
+    elif vnfdFilename != 'None':
+        sql += "VNFD_Filename='" + vnfdFilename + "',VNFD_Path='" + vnfdFilePath + "'"
+    elif vnfdCfgFilename != 'None':
+        sql += "VNF_Config_Filename='" + vnfdCfgFilename + "',VNF_Config_Path='" + vnfdCfgFilePath + "'"
+    if vnfdParamFilename != 'None':
+        sql += "VNF_Param_Filename='" + vnfdParamFilename + "',VNF_Param_Path='" + vnfdParamPath + "'"
+
+    sql += " where Catalog_Id='" + catalogId + "'"
     print 'sql:' + sql
     cursor.execute(sql)
     print 'uploaded successfully...'

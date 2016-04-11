@@ -85,8 +85,39 @@ def loginHandler(request, userId='Ben', pwd=''):
 @parser_classes((JSONParser,))
 def approveCatalog(request, catalogId=''):
     d = json.loads(catalogId)
+    print '1'
     for id in d:
-        updateCatalog(id, "A")
+        print '12'
+        sql = 'select * from vnf_catalog where Catalog_Id='+str(id)
+        cursor = connections['nfv'].cursor()
+        cursor.execute(sql)
+        results = namedtuplefetchall(cursor)
+        for row in results:
+            vnfDefPath = str(row.VNFD_Path)
+            vnfConfigPath = str(row.VNF_Config_Path)
+            vnfParamPath = str(row.VNF_Param_Path)
+            vnfDefName = str(row.VNFD_Filename)
+            vnfConfigName = str(row.VNF_Config_Filename)
+            vnfParamName = str(row.VNF_Param_Filename)
+        vnfd_heat_path = 'None'
+        vnd_config_heat_path = 'None'
+        vnf_param_heat_path = 'None'
+        if vnfDefPath!= 'None':
+            vnfd_heat_path = translate_local(vnfDefPath, vnfDefName)
+            vnfd_heat_path = vnfd_heat_path.replace("\\", "\\\\")
+        if vnfConfigPath!= 'None':
+            vnd_config_heat_path = translate_local(vnfConfigPath, vnfConfigName)
+            vnd_config_heat_path = vnd_config_heat_path.replace("\\", "\\\\")
+        if vnfParamPath!= 'None':
+            vnf_param_heat_path = translate_local(vnfParamPath, vnfParamName)
+            vnf_param_heat_path = vnf_param_heat_path.replace("\\", "\\\\")
+
+
+        sql = "update vnf_catalog set status = 'A', VNFD_Path_Heat='"+vnfd_heat_path+"', VNF_Config_Heat='"+vnd_config_heat_path+"', VNF_Param_Heat='"+vnf_param_heat_path+"' where catalog_Id=" + str(id) + ""
+        print 'sql:' + sql
+        cursor.execute(sql)
+        cursor.close()
+        #updateCatalog(id, "A")
     return JsonResponse({'status': 'success', 'catalogId': catalogId})
 
 @api_view(['GET', 'POST'])
@@ -161,6 +192,20 @@ def translate(request):
             the_file.write(line+'\n')
     return JsonResponse({'status': 'success', 'content': content, 'path': path})
 
+def translate_local(path, file):
+    #path = 'c:\\tosca_helloworld.yaml'
+    filename, file_extension = os.path.splitext(file)
+    filename += `random.random()` + '_heat.yaml'
+    obj = TranslatorShell()
+    content = obj._translate('tosca', path, {}, True)
+    targetpath = 'c:\\folder\\' + filename
+    #targetpath = '/home/rdk/files/' + filename
+    print path
+    with open(targetpath, 'a') as the_file:
+        for line in content.splitlines():
+            the_file.write(line+'\n')
+    return targetpath
+
 @csrf_exempt
 def toscaValidate(request):
     path = handle_uploaded_file(request.FILES['path'])
@@ -179,7 +224,8 @@ def handle_uploaded_file(f):
     print f.name
     extension = f.name.split('.')[-1]
     filename = f.name +`random.random()` + '.' + extension
-    path = '/home/rdk/files/' + filename
+    #path = '/home/rdk/files/' + filename
+    path = 'c:\\folder\\' + filename
     with open(path, 'wb+') as destination:
         for chunk in f.chunks():
             destination.write(chunk)
@@ -207,6 +253,12 @@ def create_vnf_catalog(request, ):
     vnfdCfgFilePath = received_json_data['configPath']
     vnfdParamPath = received_json_data['parameterValuePointPath']
     vmImagePath = received_json_data['imagePath']
+
+
+    vnfdFilePath = str(vnfdFilePath).replace("\\", "\\\\")
+    vnfdCfgFilePath = str(vnfdCfgFilePath).replace("\\", "\\\\")
+    vnfdParamPath = str(vnfdParamPath).replace("\\", "\\\\")
+    vmImagePath = str(vmImagePath).replace("\\", "\\\\")
 
     cursor = connections['nfv'].cursor()
     status = 'P'
@@ -354,6 +406,10 @@ def upload_vnf_file(request):
     vnfdFilePath = received_json_data['vnfDefinitionPath']
     vnfdCfgFilePath = received_json_data['configPath']
     vnfdParamPath = received_json_data['parameterValuePointPath']
+
+    vnfdFilePath = str(vnfdFilePath).replace("\\", "\\\\")
+    vnfdCfgFilePath = str(vnfdCfgFilePath).replace("\\", "\\\\")
+    vnfdParamPath = str(vnfdParamPath).replace("\\", "\\\\")
 
     print 'Inside upload_vnf_file...'
     sql = "update vnf_catalog set "

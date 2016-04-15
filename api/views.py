@@ -17,6 +17,7 @@ import StringIO
 from wsgiref.util import FileWrapper
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.encoding import smart_str
+import requests
 
 def namedtuplefetchall(cursor):
     "Return all rows from a cursor as a namedtuple"
@@ -480,3 +481,122 @@ def download_file(request):
     response['Content-Disposition'] = 'attachment; filename=%s' % smart_str("files.zip")
 
     return response
+
+@api_view(['POST'])
+def listInstances(request):
+    print "Inside the listInstances API"
+    ip = '31.220.67.128'
+    # Creating auth_token
+    data = {"auth": {"tenantName": "demo", "passwordCredentials": {"username": "admin", "password": "demo"}}}
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+    data_json = json.dumps(data)
+    response = requests.post('http://' + ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
+
+    # Print(response.text)
+    response = response.json()
+    auth_token = response["access"]["token"]["id"]
+    print auth_token
+
+    # List all Tenants
+    headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
+    response = requests.get('http://'+ ip +':35357/v2.0/tenants' , headers=headers)
+
+    tenant_response = response.json()
+    tenant_details = tenant_response["tenants"]
+
+    print str(tenant_details)
+
+    tenant_id = 'f1b2b1e196874e9e9e8c24dbfe0ac072'
+
+    # List all stack
+
+    #headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
+    #response = requests.get('http://'+ ip +':8004/v1/' + tenant_id + '/stacks' , headers=headers)
+
+    #stack_response = response.json()
+
+    #print stack_response
+
+    # List all servers
+
+    headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
+    response = requests.get('http://'+ ip +':8774/v2/' + tenant_id + '/servers' , headers=headers)
+
+    server_response = response.json()
+    print server_response
+    return JsonResponse(server_response)
+
+@api_view(['POST'])
+def listHypervisors(request):
+    print "Inside the listHypervisors API"
+    ip = '31.220.67.128'
+
+    # Creating auth_token
+    data = {"auth": {"tenantName": "demo", "passwordCredentials": {"username": "admin", "password": "demo"}}}
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+    data_json = json.dumps(data)
+    response = requests.post('http://' + ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
+
+    # Print(response.text)
+    response = response.json()
+    auth_token = response["access"]["token"]["id"]
+    print auth_token
+
+    tenant_id = 'f1b2b1e196874e9e9e8c24dbfe0ac072'
+
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
+    response = requests.get('http://' + ip + ':8774/v2/' + tenant_id + '/os-hypervisors', headers=headers)
+
+    hyp_response = response.json()
+
+    return JsonResponse(hyp_response)
+
+
+@api_view(['GET'])
+def migrateVM(request):
+    print "Inside the migrate VM API"
+    ip = '31.220.67.128'
+
+    # Creating auth_token
+    data = {"auth": {"tenantName": "demo", "passwordCredentials": {"username": "admin", "password": "demo"}}}
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+    data_json = json.dumps(data)
+    response = requests.post('http://' + ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
+
+    # Print(response.text)
+    response = response.json()
+    auth_token = response["access"]["token"]["id"]
+    print auth_token
+    response = requests.post('http://' + ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
+    headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
+
+    server_id = request.GET.get('server_id')
+    print 'server_id'+str(server_id)
+
+    tenant_id = 'f1b2b1e196874e9e9e8c24dbfe0ac072'
+    #tenant_id = '9ec3405d16454da28277493f2fd82e31'
+    host = request.GET.get('host')
+
+    print 'host'+str(host)
+
+    #host = 'Compute1'
+    payload = { "os-migrateLive": {
+        "host": host,
+        "block_migration": True,
+        "disk_over_commit": False}
+    }
+    response = requests.post('http://'+ ip +':8774/v2.1/'+ tenant_id + '/servers/' + server_id + '/action' ,data=json.dumps(payload),headers=headers)
+    status = response.status_code
+    print status
+    #response = response.json()
+    if status ==202:
+        print 'Live Migration Success...'
+        return JsonResponse({"status":"success"})
+    else:
+        print 'Live Migration Failure... Status Code:'+status
+        return JsonResponse({"status":"failure"})
+
+
+
+
+''

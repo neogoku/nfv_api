@@ -21,6 +21,10 @@ urlpatterns = [
     url(r'^listInstances', views.listInstances),
     url(r'^listHypervisors', views.listHypervisors),
     url(r'^migrateVM',views.migrateVM),
+    url(r'^listEnvironments', views.listEnvironments),
+    url(r'^DeployVnfdTemplate', views.DeployVnfdTemplate),
+
+
 
     # upload_vnf_file(request,catalogId,vnfdFilename='', vnfdFilePath='',vnfdCfgFilename='',vnfdCfgFilePath='',vnfdParamFilename='', vnfdParamPath=''):
     # url(r'^$',views.login,name='login'),

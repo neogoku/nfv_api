@@ -18,6 +18,8 @@ from wsgiref.util import FileWrapper
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.encoding import smart_str
 import requests
+import properties
+
 
 def namedtuplefetchall(cursor):
     "Return all rows from a cursor as a namedtuple"
@@ -70,9 +72,10 @@ def loginHandler(request, userId='Ben', pwd=''):
             print "User Type " + userRole
             return JsonResponse({'UserRole': userRole, 'UserId': userId, 'UserName': userName})
     return JsonResponse({'UserRole': 'Invalid', 'UserId': userId})
-            # elif request.method == 'POST':
-            #     #return HttpResponse("Hello Login API post call response...")
-            #     return Response({'received data': request.data})
+    # elif request.method == 'POST':
+    #     #return HttpResponse("Hello Login API post call response...")
+    #     return Response({'received data': request.data})
+
 
 #
 # class loginHandler (views.APIView) :
@@ -86,13 +89,13 @@ def loginHandler(request, userId='Ben', pwd=''):
 @parser_classes((JSONParser,))
 def approveCatalog(request, catalogId=''):
     d = json.loads(catalogId)
-    vm_image_url=''
-    vnfDefName=''
-    catalogName=""
+    vm_image_url = ''
+    vnfDefName = ''
+    catalogName = ""
     cursor = connections['nfv'].cursor()
 
     for id in d:
-        sql = 'select * from vnf_catalog where Catalog_Id='+str(id)
+        sql = 'select * from vnf_catalog where Catalog_Id=' + str(id)
 
         cursor.execute(sql)
         results = namedtuplefetchall(cursor)
@@ -109,13 +112,13 @@ def approveCatalog(request, catalogId=''):
         vnfd_heat_path = 'None'
         vnd_config_heat_path = 'None'
         vnf_param_heat_path = 'None'
-        if vnfDefPath!= 'None':
+        if vnfDefPath != 'None':
             vnfd_heat_path = translate_local(vnfDefPath, vnfDefName)
             vnfd_heat_path = vnfd_heat_path.replace("\\", "\\\\")
-        if vnfConfigPath!= 'None':
+        if vnfConfigPath != 'None':
             vnd_config_heat_path = translate_local(vnfConfigPath, vnfConfigName)
             vnd_config_heat_path = vnd_config_heat_path.replace("\\", "\\\\")
-        if vnfParamPath!= 'None':
+        if vnfParamPath != 'None':
             vnf_param_heat_path = translate_local(vnfParamPath, vnfParamName)
             vnf_param_heat_path = vnf_param_heat_path.replace("\\", "\\\\")
 
@@ -125,43 +128,43 @@ def approveCatalog(request, catalogId=''):
 
     print 'Invoking Openstack Auth API......'
     for row in results:
-      env_ip = str(row.env_ip)
-      user = str(row.user)
-      password = str(row.password)
-      tenant = str(row.tenant)
+        env_ip = str(row.env_ip)
+        user = str(row.user)
+        password = str(row.password)
+        tenant = str(row.tenant)
 
-      data = {"auth": {"tenantName":tenant, "passwordCredentials": {"username": user, "password": password}}}
-      headers = {'Content-type': 'application/json','Accept':'application/json'}
-      data_json = json.dumps(data)
-      response = requests.post('http://'+ env_ip +':35357/v2.0/tokens', data=data_json, headers=headers)
-      response = response.json()
-      auth_token = response["access"]["token"]["id"]
-      print auth_token
+        data = {"auth": {"tenantName": tenant, "passwordCredentials": {"username": user, "password": password}}}
+        headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+        data_json = json.dumps(data)
+        response = requests.post('http://' + env_ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
+        response = response.json()
+        auth_token = response["access"]["token"]["id"]
+        print auth_token
 
-      print 'Invoking List All tenants......'
+        print 'Invoking List All tenants......'
 
-    # List all Tenants
-      headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
-      response = requests.get('http://'+ env_ip +':35357/v2.0/tenants' , headers=headers)
+        # List all Tenants
+        headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
+        response = requests.get('http://' + env_ip + ':35357/v2.0/tenants', headers=headers)
 
-      tenant_response = response.json()
-      tenant_details = tenant_response["tenants"]
+        tenant_response = response.json()
+        tenant_details = tenant_response["tenants"]
 
-      tenant_id = ''
-      for tenant in tenant_details:
-        if tenant["name"] == 'demo':
-            tenant_id = tenant["id"]
-
+        tenant_id = ''
+        for tenant in tenant_details:
+            if tenant["name"] == 'demo':
+                tenant_id = tenant["id"]
 
     imageFormat = 'raw'
     containerFormat = 'bare'
-    print "http://"+vm_image_url
-    vm_image_url="http://"+vm_image_url
+    print vm_image_url
+    #vm_image_url = "http://" + vm_image_url
     print catalogName
     print 'http://' + env_ip + ':9292/v1/images'
     headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token,
-               'x-glance-api-copy-from': vm_image_url, 'x-image-meta-name': catalogName, 'x-image-meta-disk_format': imageFormat,
-               'x-image-meta-container_format': containerFormat, "x-image-meta-is_public":"true"}
+               'x-glance-api-copy-from': vm_image_url, 'x-image-meta-name': catalogName,
+               'x-image-meta-disk_format': imageFormat,
+               'x-image-meta-container_format': containerFormat, "x-image-meta-is_public": "true"}
     print headers
     response = requests.post('http://' + env_ip + ':9292/v1/images', headers=headers)
     print response.status_code
@@ -169,32 +172,34 @@ def approveCatalog(request, catalogId=''):
 
     created_image_id = json_image["image"]["id"]
 
-    loop=True
+    loop = True
 
-    while(loop):
+    while (loop):
         headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
-        response = requests.get('http://' + env_ip + ':9292/v2/images/'+created_image_id, headers=headers)
+        response = requests.get('http://' + env_ip + ':9292/v2/images/' + created_image_id, headers=headers)
         response = response.json()
         if response["status"] == "active":
-            loop=False
+            loop = False
 
-    retrieveSQL = "select vnfd_content from vnf_catalog where catalog_Id='"+str(id)+"'"
+    retrieveSQL = "select vnfd_content from vnf_catalog where catalog_Id='" + str(id) + "'"
     print retrieveSQL
     cursor.execute(retrieveSQL)
-    vnfdcontent= cursor.fetchone()[0]
-    print 'vnfdcontent:' + vnfdcontent
-    print 'vnfDefName:'+vnfDefName
-    status = CreateVnfdTemplate(vnfDefName,vnfdcontent,env_ip,user,tenant,password,auth_token,str(id))
-    print 'Status of create vnfd template:'+status
-        #updateCatalog(id, "A")
+    vnfdcontent = cursor.fetchone()[0]
+    status = CreateVnfdTemplate(catalogName, vnfdcontent, env_ip, user, tenant, password, auth_token, str(id))
 
-    sql = "update vnf_catalog set status = 'A', VNFD_Path_Heat='" + vnfd_heat_path + "', VNF_Config_Heat='" + vnd_config_heat_path + "', VNF_Param_Heat='" + vnf_param_heat_path + "' where catalog_Id=" + str(id) + ""
-    cursor.execute(sql)
-    cursor.close()
+    if status == "success":
+        sql = "update vnf_catalog set status = 'A', VNFD_Path_Heat='" + vnfd_heat_path + "', VNF_Config_Heat='" + vnd_config_heat_path + "', VNF_Param_Heat='" + vnf_param_heat_path + "' where catalog_Id=" + str(
+            id) + ""
+        cursor.execute(sql)
+        cursor.close()
+        return JsonResponse({'status': 'success', 'catalogId': str(id)})
+    else:
+        cursor.close()
+        return JsonResponse({'status': 'failed', 'catalogId': str(id)})
 
-    return JsonResponse({'status': 'success', 'catalogId': str(id)})
 
-def CreateVnfdTemplate(vnfdname,vnfdcontent,ip,user,tenant,password,auth_token,catalogId):
+
+def CreateVnfdTemplate(vnfdname, vnfdcontent, ip, user, tenant, password, auth_token, catalogId):
     print 'Inside createVNFD Template'
     print vnfdname
     print vnfdcontent
@@ -208,30 +213,29 @@ def CreateVnfdTemplate(vnfdname,vnfdcontent,ip,user,tenant,password,auth_token,c
     ###Creation the VNFD template
     headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
     payload = {
-	    "auth": {
-		"tenantName": tenant,
-		"passwordCredentials": {
-		    "username": user,
-		    "password": password
-		}
-	    },
-	    "vnfd": {
-		"service_types": [
-		    {
-		        "service_type": "vnfd"
-		    }
-		],
-		"mgmt_driver": "noop",
-		"infra_driver": "heat",
-		"attributes": {
-		    "vnfd": vnfdcontent
-		},
-		"name": vnfdname
-	    }
-	}
+        "auth": {
+            "tenantName": tenant,
+            "passwordCredentials": {
+                "username": user,
+                "password": password
+            }
+        },
+        "vnfd": {
+            "service_types": [
+                {
+                    "service_type": "vnfd"
+                }
+            ],
+            "mgmt_driver": "noop",
+            "infra_driver": "heat",
+            "attributes": {
+                "vnfd": vnfdcontent
+            },
+            "name": vnfdname
+        }
+    }
 
     response = requests.post('http://' + ip + ':8888/v1.0/vnfds', data=json.dumps(payload), headers=headers)
-
 
     if response.status_code == 201:
         vnfd_create_response = response.json()
@@ -240,12 +244,13 @@ def CreateVnfdTemplate(vnfdname,vnfdcontent,ip,user,tenant,password,auth_token,c
         print "vnfd_create_response:" + str(vnfd_create_response)
 
         cursor = connections['nfv'].cursor()
-        updateSql="update vnf_catalog set vnfd_template_id='"+vnfd_template_id+"' where catalog_id='"+catalogId+"'"
-        print 'update VNF template sql:'+updateSql
+        updateSql = "update vnf_catalog set vnfd_template_id='" + vnfd_template_id + "' where catalog_id='" + catalogId + "'"
+        print 'update VNF template sql:' + updateSql
         cursor.execute(updateSql)
         return "success"
     else:
         return "failure"
+
 
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
@@ -255,14 +260,16 @@ def rejectCatalog(request, catalogId=''):
         updateCatalog(id, "R")
     return JsonResponse({'status': 'success', 'catalogId': catalogId})
 
+
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
 def deleteCatalog(request, catalogId=''):
     cursor = connections['nfv'].cursor()
-    sql = "delete from vnf_catalog where catalog_Id="+catalogId
+    sql = "delete from vnf_catalog where catalog_Id=" + catalogId
     print 'sql:' + sql
     cursor.execute(sql)
     return JsonResponse({'status': 'deleted', 'catalogId': catalogId})
+
 
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
@@ -290,65 +297,71 @@ def deleteCatalogFiles(request):
     if vnfDef == 'true':
         if os.path.isfile(vnfDefPath):
             os.remove(vnfDefPath)
-        sql='Update vnf_catalog set VNFD_Filename="None", VNFD_Path="None" where Catalog_Id=' + str(catalogId)
+        sql = 'Update vnf_catalog set VNFD_Filename="None", VNFD_Path="None" where Catalog_Id=' + str(catalogId)
         cursor.execute(sql)
     if vnfConfig == 'true':
         if os.path.isfile(vnfConfigPath):
             os.remove(vnfConfigPath)
-        sql='Update vnf_catalog set VNF_Config_Filename="None", VNF_Config_Path="None" where Catalog_Id=' + str(catalogId)
+        sql = 'Update vnf_catalog set VNF_Config_Filename="None", VNF_Config_Path="None" where Catalog_Id=' + str(
+            catalogId)
         cursor.execute(sql)
     if vnfParam == 'true':
         if os.path.isfile(vnfParamPath):
             os.remove(vnfParamPath)
-        sql='Update vnf_catalog set VNFD_Param_Filename="None", VNF_Param_Path="None" where Catalog_Id=' + str(catalogId)
+        sql = 'Update vnf_catalog set VNFD_Param_Filename="None", VNF_Param_Path="None" where Catalog_Id=' + str(
+            catalogId)
         cursor.execute(sql)
 
-
     return JsonResponse({'status': 'success', 'catalogId': catalogId})
+
 
 @csrf_exempt
 def translate(request):
     path = handle_uploaded_file(request.FILES['path'])
-    #path = 'c:\\tosca_helloworld.yaml'
+    # path = 'c:\\tosca_helloworld.yaml'
     obj = TranslatorShell()
     content = obj._translate('tosca', path, {}, True)
     os.remove(path)
     print path
     with open(path, 'a') as the_file:
         for line in content.splitlines():
-            the_file.write(line+'\n')
+            the_file.write(line + '\n')
     return JsonResponse({'status': 'success', 'content': content, 'path': path})
 
+
 def translate_local(path, file):
-    #path = 'c:\\tosca_helloworld.yaml'
+    # path = 'c:\\tosca_helloworld.yaml'
     filename, file_extension = os.path.splitext(file)
     filename += `random.random()` + '_heat.yaml'
     obj = TranslatorShell()
     content = obj._translate('tosca', path, {}, True)
     targetpath = 'c:\\folder\\' + filename
-    #targetpath = '/home/rdk/files/' + filename
+    # targetpath = '/home/rdk/files/' + filename
     print path
     with open(targetpath, 'a') as the_file:
         for line in content.splitlines():
-            the_file.write(line+'\n')
+            the_file.write(line + '\n')
     return targetpath
+
 
 @csrf_exempt
 def toscaValidate(request):
     path = handle_uploaded_file(request.FILES['path'])
-    #obj = ToscaTemplate(path, None, True)
-    return JsonResponse({'status': 'success', 'message': 'TOSCA Validation Successful', 'path' : path})
+    # obj = ToscaTemplate(path, None, True)
+    return JsonResponse({'status': 'success', 'message': 'TOSCA Validation Successful', 'path': path})
     # if obj.msg == 'success':
     #     return JsonResponse({'status': 'success', 'message': 'TOSCA Validation Successful', 'path' : path})
     # else:
     #     return JsonResponse({'status': 'failed', 'message': obj.msg})
+
 
 @csrf_exempt
 def uploadImage(request):
     path = handle_uploaded_file(request.FILES['path'])
     return JsonResponse({'status': 'success', 'path': path})
 
-#def handle_uploaded_file(f):
+
+# def handle_uploaded_file(f):
 #    print f.name
 #    extension = f.name.split('.')[-1]
 #    filename = f.name +`random.random()` + '.' + extension
@@ -360,18 +373,14 @@ def uploadImage(request):
 #    return path
 
 def handle_uploaded_file(f):
-
-     print f.name
-
-     #extension = f.name.split('.')[-1]
-     #filename = f.name +`random.random()` + '.' + extension
-      #path = '/home/rdk/files/' + filename
-     path = 'c:\\folder\\' + f.name
-     with open(path, 'wb+') as destination:
-      for chunk in f.chunks():
-       destination.write(chunk)
-
-     return path
+    # extension = f.name.split('.')[-1]
+    # filename = f.name +`random.random()` + '.' + extension
+    path = properties.filestoreparth + f.name
+    # path = 'c:\\folder\\' + f.name
+    with open(path, 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
+    return path
 
 
 def updateCatalog(catalogId, status):
@@ -381,6 +390,7 @@ def updateCatalog(catalogId, status):
     cursor.execute(sql)
     return JsonResponse({'status': 'success', 'catalogId': catalogId})
 
+
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
 def create_vnf_catalog(request, ):
@@ -388,7 +398,7 @@ def create_vnf_catalog(request, ):
     received_json_data = json.loads(request.body)
     catalogName = received_json_data['vnfName']
     catalogDesc = received_json_data['vnfDesc']
-    vmImageFile = received_json_data['imgLoc']
+    vmImageURL = received_json_data['imgLoc']
     vnfdFilename = received_json_data['vnfDefinitionName']
     vnfdCfgFilename = received_json_data['configName']
     vnfdParamFilename = received_json_data['parameterValuePointName']
@@ -398,7 +408,6 @@ def create_vnf_catalog(request, ):
     vmImagePath = received_json_data['imagePath']
     vmImageName = received_json_data['imageName']
 
-
     vnfdFilePath = str(vnfdFilePath).replace("\\", "\\\\")
     vnfdCfgFilePath = str(vnfdCfgFilePath).replace("\\", "\\\\")
     vnfdParamPath = str(vnfdParamPath).replace("\\", "\\\\")
@@ -406,99 +415,108 @@ def create_vnf_catalog(request, ):
 
     cursor = connections['nfv'].cursor()
     status = 'P'
-    sql = "INSERT INTO vnf_catalog(Catalog_Name, Catalog_Desc,VM_Imagefile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename, Status, VNFD_Path, VNF_Config_Path, VNF_Param_Path, VM_Image_Path) " + "VALUES ('" + catalogName + "','" + catalogDesc + "','" + vmImageFile + "','" + vnfdFilename + "','" + vnfdCfgFilename + "','" + vnfdParamFilename + "','" + status + "' ,'" + vnfdFilePath + "','" + vnfdCfgFilePath + "','" + vnfdParamPath + "','" + vmImagePath + "')"
+    sql = "INSERT INTO vnf_catalog(Catalog_Name, Catalog_Desc,VM_Imagefile, VNFD_Filename, VNF_Config_Filename , VNF_Param_Filename, Status, VNFD_Path, VNF_Config_Path, VNF_Param_Path, VM_Image_Path) " + "VALUES ('" + catalogName + "','" + catalogDesc + "','" + vmImageURL + "','" + vnfdFilename + "','" + vnfdCfgFilename + "','" + vnfdParamFilename + "','" + status + "' ,'" + vnfdFilePath + "','" + vnfdCfgFilePath + "','" + vnfdParamPath + "','" + vmImagePath + "')"
     print 'sql:' + sql
     cursor.execute(sql)
 
     # Query to fetch Catalog_Id to the user
-    retrieveSql = "SELECT Catalog_Id FROM vnf_catalog where Catalog_Name='" + catalogName + "'";
-    print retrieveSql
-    cursor.execute(retrieveSql)
-    results = namedtuplefetchall(cursor)
+    #retrieveSql = "SELECT Catalog_Id FROM vnf_catalog where Catalog_Name='" + catalogName + "'";
+    #print retrieveSql
+    #cursor.execute(retrieveSql)
+    #results = namedtuplefetchall(cursor)
+    print "**********************************************************************"
+    print "last row id: "+str(cursor.lastrowid)
+    catalogId = cursor.lastrowid
+    #for row in results:
+    #    catalogId = str(row.Catalog_Id)
+    #   print "Catalog Id: " + catalogId
 
-    catalogId= ''
-    for row in results:
-        catalogId = str(row.Catalog_Id)
-        print "Catalog Id: " + catalogId
-
-    envDetailsSql ="SELECT * from vnf_env where id=1"
+    envDetailsSql = "SELECT * from vnf_env where id=1"
     cursor.execute(envDetailsSql)
     results = namedtuplefetchall(cursor)
 
     print 'Invoking Openstack Auth API......'
     for row in results:
-      env_ip = str(row.env_ip)
-      user = str(row.user)
-      password = str(row.password)
-      tenant = str(row.tenant)
+        env_ip = str(row.env_ip)
+        user = str(row.user)
+        password = str(row.password)
+        tenant = str(row.tenant)
 
-      data = {"auth": {"tenantName":tenant, "passwordCredentials": {"username": user, "password": password}}}
-      headers = {'Content-type': 'application/json','Accept':'application/json'}
-      data_json = json.dumps(data)
-      response = requests.post('http://'+ env_ip +':35357/v2.0/tokens', data=data_json, headers=headers)
-      print(response.text)
-      response = response.json()
-      auth_token = response["access"]["token"]["id"]
-      print auth_token
+        data = {"auth": {"tenantName": tenant, "passwordCredentials": {"username": user, "password": password}}}
+        headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+        data_json = json.dumps(data)
+        response = requests.post('http://' + env_ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
+        print(response.text)
+        response = response.json()
+        auth_token = response["access"]["token"]["id"]
+        print auth_token
 
-      print 'Invoking List All tenants......'
+        print 'Invoking List All tenants......'
 
-    # List all Tenants
-      headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
-      response = requests.get('http://'+ env_ip +':35357/v2.0/tenants' , headers=headers)
+        # List all Tenants
+        headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
+        response = requests.get('http://' + env_ip + ':35357/v2.0/tenants', headers=headers)
 
-      tenant_response = response.json()
-      tenant_details = tenant_response["tenants"]
+        tenant_response = response.json()
+        tenant_details = tenant_response["tenants"]
 
-      print str(tenant_details)
-      tenant_id = ''
-      for tenant in tenant_details:
-        if tenant["name"] == 'demo':
-            tenant_id = tenant["id"]
+        print str(tenant_details)
+        tenant_id = ''
+        for tenant in tenant_details:
+            if tenant["name"] == tenant:
+                tenant_id = tenant["id"]
 
-      headers = {'X-Auth-Token': auth_token}
-      print 'vmImagePath:'+ str(vmImagePath)
-      data = open(vmImagePath, 'rb').read()
-      url ="http://"+ env_ip +":8080/v1/AUTH_"+tenant_id+"/nfv/"+vmImageName
-      r = requests.put(url, data=data, headers=headers)
-      print r.status_code
-      print r.content
+        url=''
+        if vmImageURL == 'NA':
+            headers = {'X-Auth-Token': auth_token}
+            print 'vmImagePath:' + str(vmImagePath)
+            data = open(vmImagePath, 'rb').read()
+            url = "http://" + env_ip + ":8080/v1/AUTH_" + tenant_id + "/nfv/" + vmImageName
+            r = requests.put(url, data=data, headers=headers)
+            print r.status_code
+            print r.content
+        else:
+            url=vmImageURL
 
-      print 'Updating the swift object URL inside the vnf_catalog'
-      updateImagePathSql = "update vnf_catalog set vm_image_path='"+url+"' where catalog_id="+catalogId
-      print 'updateImagePathSql:'+ updateImagePathSql
-      cursor.execute(updateImagePathSql)
+
+        print url
+        print 'Updating the swift object URL inside the vnf_catalog'
+        updateImagePathSql = "update vnf_catalog set vm_image_path='" + url + "' where catalog_id=" + str(catalogId)
+        print 'updateImagePathSql:' + updateImagePathSql
+        cursor.execute(updateImagePathSql)
 
     if vnfdFilePath != 'None':
-     print 'vnfdFilePath:'+vnfdFilePath
-     vnfData = getFileContent(vnfdFilePath)
-     updateSql = "update vnf_catalog set vnfd_content =%s where catalog_Id=%s";
-     args = (vnfData,catalogId)
-     cursor.execute(updateSql,args)
+        print 'vnfdFilePath:' + vnfdFilePath
+        vnfData = getFileContent(vnfdFilePath)
+        updateSql = "update vnf_catalog set vnfd_content =%s where catalog_Id=%s";
+        args = (vnfData, catalogId)
+        cursor.execute(updateSql, args)
     if vnfdParamPath != 'None':
-     print 'vnfdParamPath:' +vnfdParamPath
-     vnfdParamData = getFileContent(vnfdParamPath)
-     updateSql = "update vnf_catalog set vnf_param_content =%s where catalog_Id=%s";
-     args = (vnfdParamData,catalogId)
-     cursor.execute(updateSql,args)
+        print 'vnfdParamPath:' + vnfdParamPath
+        vnfdParamData = getFileContent(vnfdParamPath)
+        updateSql = "update vnf_catalog set vnf_param_content =%s where catalog_Id=%s";
+        args = (vnfdParamData, catalogId)
+        cursor.execute(updateSql, args)
     if vnfdCfgFilePath != 'None':
-     print 'vnfdCfgFilePath:' +vnfdCfgFilePath
-     vnfdCfgData = getFileContent(vnfdCfgFilePath)
-     updateSql = "update vnf_catalog set vnf_cfg_content =%s where catalog_Id=%s";
-     args = (vnfdCfgData,catalogId)
-     cursor.execute(updateSql,args)
+        print 'vnfdCfgFilePath:' + vnfdCfgFilePath
+        vnfdCfgData = getFileContent(vnfdCfgFilePath)
+        updateSql = "update vnf_catalog set vnf_cfg_content =%s where catalog_Id=%s";
+        args = (vnfdCfgData, catalogId)
+        cursor.execute(updateSql, args)
 
     return JsonResponse({'CatalogId': catalogId})
 
 
 def getFileContent(filename):
- with open(filename, 'rb') as f:
-  filecontent = f.read()
-  return filecontent
+    with open(filename, 'rb') as f:
+        filecontent = f.read()
+        return filecontent
+
 
 def write_file(data, filename):
     with open(filename, 'wb') as f:
         f.write(data)
+
 
 @api_view(['GET', 'POST'])
 @parser_classes((JSONParser,))
@@ -524,15 +542,15 @@ def list_vnf_catalog(request):
             vnf_param_filename = str(row.VNF_Param_Filename)
 
             jsonobj = {'CatalogId': catalog_id, 'CatalogName': catalog_name, 'CatalogDesc': catalog_Desc,
-                                'VM_ImageFile': vm_image_file, 'VNFD_Filename': vnfd_filename,
-                                'VNF_Config_Filename': vnf_cfg_filename, 'VNF_Param_Filename': vnf_param_filename}
+                       'VM_ImageFile': vm_image_file, 'VNFD_Filename': vnfd_filename,
+                       'VNF_Config_Filename': vnf_cfg_filename, 'VNF_Param_Filename': vnf_param_filename}
 
-            #dataobj=[catalog_name,catalog_Desc,vm_image_file,vnfd_filename,vnf_cfg_filename,vnf_param_filename,catalog_id]
+            # dataobj=[catalog_name,catalog_Desc,vm_image_file,vnfd_filename,vnf_cfg_filename,vnf_param_filename,catalog_id]
 
             json_res.append(jsonobj)
-            #dataobj_res.append(dataobj)
+            # dataobj_res.append(dataobj)
 
-    print 'JsonResponse:'+str(json_res)
+    print 'JsonResponse:' + str(json_res)
     return JsonResponse(json_res, safe=False)
 
 
@@ -561,7 +579,8 @@ def list_enterprise_catalog(request):
             vnfd_template_id = str(row.vnfd_template_id)
             jsonobj = {'CatalogId': catalog_id, 'CatalogName': catalog_name, 'CatalogDesc': catalog_Desc,
                        'VM_ImageFile': vm_image_file, 'VNFD_Filename': vnfd_filename,
-                       'VNF_Config_Filename': vnf_cfg_filename, 'VNF_Param_Filename': vnf_param_filename, 'vnfd_template_id': vnfd_template_id}
+                       'VNF_Config_Filename': vnf_cfg_filename, 'VNF_Param_Filename': vnf_param_filename,
+                       'vnfd_template_id': vnfd_template_id}
 
             # dataobj=[catalog_name,catalog_Desc,vm_image_file,vnfd_filename,vnf_cfg_filename,vnf_param_filename,catalog_id]
 
@@ -696,11 +715,11 @@ def download_file(request):
 
     zf.close()
 
-
-    response = HttpResponse(s.getvalue(),content_type='application/zip')
+    response = HttpResponse(s.getvalue(), content_type='application/zip')
     response['Content-Disposition'] = 'attachment; filename=%s' % smart_str("files.zip")
 
     return response
+
 
 @api_view(['POST'])
 def listInstances(request):
@@ -718,8 +737,8 @@ def listInstances(request):
     print auth_token
 
     # List all Tenants
-    headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
-    response = requests.get('http://'+ ip +':35357/v2.0/tenants' , headers=headers)
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
+    response = requests.get('http://' + ip + ':35357/v2.0/tenants', headers=headers)
 
     tenant_response = response.json()
     tenant_details = tenant_response["tenants"]
@@ -730,21 +749,22 @@ def listInstances(request):
 
     # List all stack
 
-    #headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
-    #response = requests.get('http://'+ ip +':8004/v1/' + tenant_id + '/stacks' , headers=headers)
+    # headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
+    # response = requests.get('http://'+ ip +':8004/v1/' + tenant_id + '/stacks' , headers=headers)
 
-    #stack_response = response.json()
+    # stack_response = response.json()
 
-    #print stack_response
+    # print stack_response
 
     # List all servers
 
-    headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
-    response = requests.get('http://'+ ip +':8774/v2/' + tenant_id + '/servers' , headers=headers)
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
+    response = requests.get('http://' + ip + ':8774/v2/' + tenant_id + '/servers', headers=headers)
 
     server_response = response.json()
     print server_response
     return JsonResponse(server_response)
+
 
 @api_view(['POST'])
 def listHypervisors(request):
@@ -788,33 +808,34 @@ def migrateVM(request):
     auth_token = response["access"]["token"]["id"]
     print auth_token
     response = requests.post('http://' + ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
-    headers = {'Content-type': 'application/json','Accept':'application/json','X-Auth-Token': auth_token}
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json', 'X-Auth-Token': auth_token}
 
     server_id = request.GET.get('server_id')
-    print 'server_id'+str(server_id)
+    print 'server_id' + str(server_id)
 
     tenant_id = 'f1b2b1e196874e9e9e8c24dbfe0ac072'
-    #tenant_id = '9ec3405d16454da28277493f2fd82e31'
+    # tenant_id = '9ec3405d16454da28277493f2fd82e31'
     host = request.GET.get('host')
 
-    print 'host'+str(host)
+    print 'host' + str(host)
 
-    #host = 'Compute1'
-    payload = { "os-migrateLive": {
+    # host = 'Compute1'
+    payload = {"os-migrateLive": {
         "host": host,
         "block_migration": True,
         "disk_over_commit": False}
     }
-    response = requests.post('http://'+ ip +':8774/v2.1/'+ tenant_id + '/servers/' + server_id + '/action' ,data=json.dumps(payload),headers=headers)
+    response = requests.post('http://' + ip + ':8774/v2.1/' + tenant_id + '/servers/' + server_id + '/action',
+                             data=json.dumps(payload), headers=headers)
     status = response.status_code
     print status
-    #response = response.json()
-    if status ==202:
+    # response = response.json()
+    if status == 202:
         print 'Live Migration Success...'
-        return JsonResponse({"status":"success"})
+        return JsonResponse({"status": "success"})
     else:
-        print 'Live Migration Failure... Status Code:'+status
-        return JsonResponse({"status":"failure"})
+        print 'Live Migration Failure... Status Code:' + status
+        return JsonResponse({"status": "failure"})
 
 
 @api_view(['GET'])
@@ -827,12 +848,12 @@ def listEnvironments(request):
     results = namedtuplefetchall(cursor)
     json_res = []
     for row in results:
-            env_ip = str(row.env_ip)
-            env_desc= str(row.env_desc)
-            print "Environment IP: " + env_ip
-            print "Environment desc:"+ env_desc
-            jsonobj = {'Environment_ip': env_ip, 'Environment_Desc': env_desc}
-            json_res.append(jsonobj)
+        env_ip = str(row.env_ip)
+        env_desc = str(row.env_desc)
+        print "Environment IP: " + env_ip
+        print "Environment desc:" + env_desc
+        jsonobj = {'Environment_ip': env_ip, 'Environment_Desc': env_desc}
+        json_res.append(jsonobj)
 
     print 'JsonResponse:' + str(json_res)
     return JsonResponse(json_res, safe=False)
@@ -849,7 +870,7 @@ def DeployVnfdTemplate(request):
     password = ''
 
     cursor = connections['nfv'].cursor()
-    envDetailsSql ="SELECT * from vnf_env where id=1"
+    envDetailsSql = "SELECT * from vnf_env where id=1"
     cursor.execute(envDetailsSql)
     results = namedtuplefetchall(cursor)
 
@@ -860,10 +881,10 @@ def DeployVnfdTemplate(request):
         password = str(row.password)
         tenant = str(row.tenant)
 
-    data = {"auth": {"tenantName":tenant, "passwordCredentials": {"username": user, "password": password}}}
-    headers = {'Content-type': 'application/json','Accept':'application/json'}
+    data = {"auth": {"tenantName": tenant, "passwordCredentials": {"username": user, "password": password}}}
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
     data_json = json.dumps(data)
-    response = requests.post('http://'+ ip +':35357/v2.0/tokens', data=data_json, headers=headers)
+    response = requests.post('http://' + ip + ':35357/v2.0/tokens', data=data_json, headers=headers)
     response = response.json()
     auth_token = response["access"]["token"]["id"]
     print auth_token
@@ -888,13 +909,13 @@ def DeployVnfdTemplate(request):
     print vnf_image_payload
 
     response = requests.post('http://' + ip + ':8888/v1.0/vnfs', data=json.dumps(vnf_image_payload),
-                                       headers=headers)
+                             headers=headers)
     vnf_image_response = response.json()
     print "List create VNF response:" + str(vnf_image_response)
 
     print response.status_code
     print response
     if response.status_code == 201:
-        return JsonResponse({"status":"success"})
+        return JsonResponse({"status": "success"})
     else:
         return JsonResponse({"status": "failed"})
